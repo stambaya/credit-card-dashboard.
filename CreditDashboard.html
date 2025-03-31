@@ -1,0 +1,148 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Credit Card Customer Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      font-size: 24px;
+      margin-bottom: 30px;
+    }
+    .cards {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 200px;
+    }
+    .charts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+    }
+    canvas {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">Credit Card Customer Analytics Dashboard</div>
+  <div class="cards">
+    <div class="card">
+      <div id="totalCustomers">0</div>
+      <small>Total Customers</small>
+    </div>
+    <div class="card">
+      <div id="avgBalance">$0</div>
+      <small>Average Balance</small>
+    </div>
+    <div class="card">
+      <div id="avgCreditLimit">$0</div>
+      <small>Average Credit Limit</small>
+    </div>
+  </div>
+
+  <div class="charts">
+    <canvas id="topPurchasers" width="500" height="300"></canvas>
+    <canvas id="purchaseTypePie" width="400" height="300"></canvas>
+    <canvas id="fullPaymentRate" width="500" height="300"></canvas>
+  </div>
+
+  <script>
+    fetch('CC_General_Converted_Latest.json')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("totalCustomers").innerText = data.length;
+        document.getElementById("avgBalance").innerText =
+          "$" + (data.reduce((sum, d) => sum + d.BALANCE, 0) / data.length).toFixed(2);
+        document.getElementById("avgCreditLimit").innerText =
+          "$" + (data.reduce((sum, d) => sum + d.CREDIT_LIMIT, 0) / data.length).toFixed(2);
+
+        const topData = [...data].sort((a, b) => b.PURCHASES - a.PURCHASES).slice(0, 10);
+        new Chart(document.getElementById('topPurchasers').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: topData.map(d => d.CUST_ID),
+            datasets: [{
+              label: 'Total Purchases',
+              data: topData.map(d => d.PURCHASES),
+              backgroundColor: '#6CE6DF'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Top Customers by Purchases'
+              }
+            }
+          }
+        });
+
+        const oneoff = data.reduce((sum, d) => sum + d.ONEOFF_PURCHASES, 0);
+        const installment = data.reduce((sum, d) => sum + d.INSTALLMENTS_PURCHASES, 0);
+        new Chart(document.getElementById('purchaseTypePie').getContext('2d'), {
+          type: 'pie',
+          data: {
+            labels: ['One-Off Purchases', 'Installment Purchases'],
+            datasets: [{
+              data: [oneoff, installment],
+              backgroundColor: ['#E8788C', '#F7D366']
+            }]
+          },
+          options: {
+            plugins: {
+              title: {
+                display: true,
+                text: 'Purchase Type Distribution'
+              }
+            }
+          }
+        });
+
+        const fullPaymentCounts = [
+          data.filter(d => d.PRC_FULL_PAYMENT > 0.5).length,
+          data.filter(d => d.PRC_FULL_PAYMENT <= 0.5).length
+        ];
+        new Chart(document.getElementById('fullPaymentRate').getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['High Full Payment Rate', 'Low Full Payment Rate'],
+            datasets: [{
+              data: fullPaymentCounts,
+              backgroundColor: ['#6A5ACD', '#FFA07A']
+            }]
+          },
+          options: {
+            plugins: {
+              title: {
+                display: true,
+                text: 'Customers by Full Payment Rate'
+              }
+            }
+          }
+        });
+      });
+  </script>
+</body>
+</html>
